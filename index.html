@@ -285,23 +285,22 @@
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
           <div style="font-size:18px">☁</div>
           <div>
-            <div style="font-size:13px;font-weight:600;color:var(--ink)">Google Sheets 실시간 연동</div>
-            <div style="font-size:11px;color:var(--il)">한국-이탈리아 양쪽에서 데이터 공유</div>
+            <div style="font-size:13px;font-weight:600;color:var(--ink)">Notion 실시간 연동</div>
+            <div style="font-size:11px;color:var(--il)">Notion DB ↔ 한국·이탈리아 실시간 공유</div>
           </div>
           <div id="cloud-badge" style="margin-left:auto;font-size:10px;padding:3px 9px;border-radius:20px;background:var(--cr);color:var(--il)">미연동</div>
         </div>
         <div style="display:flex;flex-direction:column;gap:10px">
-          <div class="fg">
-            <label style="font-size:11px;font-weight:500;color:var(--im)">Apps Script 웹앱 URL</label>
-            <input id="gas-url-input" type="url" placeholder="https://script.google.com/macros/s/.../exec" style="font-size:11px" oninput="updateGasUrl()">
+          <div style="font-size:12px;color:#0F6E56;background:#e1f5ee;border-radius:6px;padding:10px 12px;font-weight:500">
+            ✓ Notion DB 연동 활성 — 한국·이탈리아 실시간 공유
           </div>
           <div style="display:flex;gap:8px;align-items:center">
-            <button class="bp" onclick="testGasConnection()" style="font-size:11px" id="t-btn-test-gas">연결 테스트</button>
+            <button class="bp" onclick="testGasConnection()" style="font-size:11px" id="t-btn-test-gas">Notion 연결 테스트</button>
             <button class="bo" onclick="syncNow()" style="font-size:11px" id="t-btn-sync-now">지금 동기화</button>
             <span id="gas-test-result" style="font-size:11px;color:var(--il)"></span>
           </div>
           <div style="font-size:10px;color:var(--il);background:var(--cr);border-radius:6px;padding:8px 10px;line-height:1.6">
-            ① Google Sheets 생성 → ② Apps Script 배포 → ③ 웹앱 URL 붙여넣기 → ④ 연결 테스트
+            ① Google Sheets 생성 → ② Apps Script 배포 → ③ 웹앱 URL 붙여넣기 → ④ Notion 연결 테스트
           </div>
         </div>
       </div>

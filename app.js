@@ -1,6 +1,5 @@
-// ── Google Sheets 실시간 연동 설정 ───────────────────────
-// Apps Script 웹앱 배포 후 아래 두 줄을 수정하세요
-// Notion 연동 — 항상 활성 (Netlify 환경변수로 관리)
+// ── Notion 실시간 연동 설정 ──────────────────────────────
+var NOTION_API = '/api/notion'; // Netlify Function 프록시
 var USE_CLOUD = true;
 var _syncTimer = null;
 // ────────────────────────────────────────────────────────
@@ -324,7 +323,11 @@ function loadData(){
     var keys=['suppliers','customers','products','shipments','sales','payments','emailLog','docAttachments'];
     var done=0;
     keys.forEach(function(k){
-      fetch('/api/notion?sheet='+k)
+      fetch(NOTION_API, {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({action:'read', sheet:k})
+      })
         .then(function(r){return r.json();})
         .then(function(res){
           if(res.ok && res.data){
