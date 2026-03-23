@@ -1,0 +1,749 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>직수입 통합 관리 시스템 v5</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🫒</text></svg>">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="app">
+
+<!-- SIDEBAR -->
+<div class="sb" id="sidebar">
+  <div class="sb-brand">
+    <div class="sb-icon">🫒</div>
+    <div class="sb-name" id="sb-name">직수입 관리</div>
+    <div class="sb-sub">Food Import v5</div>
+  </div>
+  <div class="lang-row">
+    <button class="lb active" onclick="setLang('ko')">한국어</button>
+    <button class="lb" onclick="setLang('en')">EN</button>
+    <button class="lb" onclick="setLang('it')">IT</button>
+  </div>
+  <nav class="nav">
+    <div class="ns">대시보드</div>
+    <button class="ni active" onclick="nav('dashboard')" id="ni-dashboard"><span class="ico">◈</span><span id="nl-dashboard">대시보드</span></button>
+    <div class="ns" style="margin-top:8px">마스터 관리</div>
+    <button class="ni" onclick="nav('products')" id="ni-products"><span class="ico">🏷</span><span id="nl-products">상품 마스터</span></button>
+    <button class="ni" onclick="nav('suppliers')" id="ni-suppliers"><span class="ico">🌍</span><span id="nl-suppliers">해외 협력사</span></button>
+    <button class="ni" onclick="nav('customers')" id="ni-customers"><span class="ico">👥</span><span id="nl-customers">고객 마스터</span></button>
+    <div class="ns" style="margin-top:8px">수입 관리</div>
+    <button class="ni" onclick="nav('shipments')" id="ni-shipments"><span class="ico">📦</span><span id="nl-shipments">수입 목록</span></button>
+    <button class="ni" onclick="nav('process')" id="ni-process"><span class="ico">⟳</span><span id="nl-process">프로세스</span></button>
+    <button class="ni" onclick="nav('documents')" id="ni-documents"><span class="ico">📎</span><span id="nl-documents">서류 관리</span></button>
+    <button class="ni" onclick="nav('hscode')" id="ni-hscode"><span class="ico">📊</span><span id="nl-hscode">HS코드/관세율</span></button>
+    <div class="ns" style="margin-top:8px">영업/재무</div>
+    <button class="ni" onclick="nav('sales')" id="ni-sales"><span class="ico">💰</span><span id="nl-sales">매출 관리</span></button>
+    <button class="ni" onclick="nav('payments')" id="ni-payments"><span class="ico">🏦</span><span id="nl-payments">입금 관리</span></button>
+    <div class="ns" style="margin-top:8px">설정</div>
+    <button class="ni" onclick="nav('notifications')" id="ni-notifications"><span class="ico">🔔</span><span id="nl-notifications">알림 설정</span></button>
+    <button class="ni" onclick="nav('emaillog')" id="ni-emaillog"><span class="ico">✉</span><span id="nl-emaillog">발송 로그</span></button>
+  </nav>
+  <div id="cloud-status" style="font-size:10px;text-align:center;padding:4px 10px;opacity:0;transition:opacity .5s;display:block"></div>
+<div class="sb-foot">
+    <div class="sb-rate">
+      <div class="sb-rate-ttl">EUR/KRW</div>
+      <div class="sb-rate-val" id="sb-rate-val">—</div>
+      <div class="sb-rate-sub" id="sb-rate-sub">실시간 환율</div>
+    </div>
+    <div class="gmail-chip"><div class="g-dot"></div><div class="g-lbl" id="g-lbl">Gmail 연동 준비됨</div></div>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+  <div class="topbar">
+    <div style="display:flex;align-items:center;gap:10px">
+      <button class="bo icon-btn" onclick="toggleSidebar()" id="menu-btn" style="display:none">☰</button>
+      <div class="pt" id="page-title">대시보드</div>
+    </div>
+    <div class="tr">
+      <button class="bx" onclick="exportExcel()" id="t-btn-excel">⬇ Excel</button>
+      <button class="bp" onclick="openQuickAdd()" id="t-btn-new">+ 신규</button>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <!-- DASHBOARD -->
+    <div class="panel active" id="panel-dashboard">
+      <div class="rate-bar">
+        <div class="rate-item"><div class="rate-lbl">EUR/KRW</div><div class="rate-val" id="rate-eur-krw">—</div><div class="rate-sub" id="rate-date">—</div></div>
+        <div class="rate-div"></div>
+        <div class="rate-item"><div class="rate-lbl">USD/KRW</div><div class="rate-val" id="rate-usd-krw">—</div><div class="rate-sub" id="t-baserate">기준환율</div></div>
+        <div class="rate-div"></div>
+        <div class="rate-item"><div class="rate-lbl">EUR/USD</div><div class="rate-val" id="rate-eur-usd">—</div><div class="rate-sub" id="t-crossrate">크로스</div></div>
+        <button class="rate-refresh" onclick="fetchRates()" id="t-rate-refresh">↻ 환율 갱신</button>
+        <span class="rate-status" id="rate-status"></span>
+      </div>
+      <div class="sg6" id="stats-row"></div>
+      <div class="pw"><div class="pt2" id="t-pipe-title">수입 단계별 현황</div><div class="pipeline" id="pipeline"></div></div>
+      <div class="dash-grid">
+        <div><div class="section-ttl" id="t-lbl-recent">최근 수입 건</div><div id="dash-recent"></div></div>
+        <div><div class="section-ttl" id="t-lbl-ar">미수금 현황</div><div id="dash-ar"></div></div>
+        <div><div class="section-ttl" id="t-lbl-alerts">식품 규정 알림</div><div id="dash-alerts"></div></div>
+      </div>
+    </div>
+
+    <!-- PRODUCTS -->
+    <div class="panel" id="panel-products">
+      <div style="display:grid;grid-template-columns:190px 1fr;gap:14px;align-items:start">
+        <div class="code-index-panel">
+          <div class="ci-header">
+            <span class="ci-title">코드 인덱스</span>
+            <span class="ci-count" id="pm-ci-count">0</span>
+          </div>
+          <input class="si ci-search" id="pm-ci-search" placeholder="코드 검색..." oninput="renderPmIndex()">
+          <div class="ci-list" id="pm-ci-list"></div>
+          <button class="ci-add-btn" onclick="openNewProduct('')" id="t-ci-add-pm">+ 상품 신규 등록</button>
+        </div>
+        <div>
+          <div class="panel-toolbar">
+            <input class="si" id="pm-search" placeholder="코드/상품명 검색..." oninput="renderPM()">
+            <select class="si" id="pm-cat-filter" onchange="renderPM()"><option value="">전체 카테고리</option></select>
+            <button class="bp" onclick="openNewProduct('')">+ 상품 등록</button>
+          </div>
+          <div class="pm-grid" id="pm-grid"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SUPPLIERS -->
+    <div class="panel" id="panel-suppliers">
+      <div style="display:grid;grid-template-columns:190px 1fr;gap:14px;align-items:start">
+        <div class="code-index-panel">
+          <div class="ci-header">
+            <span class="ci-title">코드 인덱스</span>
+            <span class="ci-count" id="sup-ci-count">0</span>
+          </div>
+          <input class="si ci-search" id="sup-ci-search" placeholder="코드 검색..." oninput="renderSupIndex()">
+          <div class="ci-list" id="sup-ci-list"></div>
+          <button class="ci-add-btn" onclick="openNewSupplier('')" id="t-ci-add-sup">+ 협력사 신규 등록</button>
+        </div>
+        <div>
+          <div class="panel-toolbar">
+            <input class="si" id="sup-search" placeholder="업체명/국가 검색..." oninput="renderSuppliers()">
+            <select class="si" id="sup-country-filter" onchange="renderSuppliers()"><option value="">전체 국가</option></select>
+            <button class="bp" onclick="openNewSupplier('')">+ 협력사 등록</button>
+          </div>
+          <div id="supplier-list"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CUSTOMERS -->
+    <div class="panel" id="panel-customers">
+      <div style="display:grid;grid-template-columns:190px 1fr;gap:14px;align-items:start">
+        <div class="code-index-panel">
+          <div class="ci-header">
+            <span class="ci-title">코드 인덱스</span>
+            <span class="ci-count" id="cust-ci-count">0</span>
+          </div>
+          <input class="si ci-search" id="cust-ci-search" placeholder="코드 검색..." oninput="renderCustIndex()">
+          <div class="ci-list" id="cust-ci-list"></div>
+          <button class="ci-add-btn" onclick="openNewCustomer('')" id="t-ci-add-cust">+ 고객 신규 등록</button>
+        </div>
+        <div>
+          <div class="panel-toolbar">
+            <input class="si" id="cust-search" placeholder="업체명/담당자 검색..." oninput="renderCustomers()">
+            <select class="si" id="cust-grade-filter" onchange="renderCustomers()"><option value="">전체 등급</option><option>VIP</option><option>A</option><option>B</option><option>C</option></select>
+            <button class="bp" onclick="openNewCustomer('')">+ 고객 등록</button>
+          </div>
+          <div id="customer-list"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SHIPMENTS -->
+    <div class="panel" id="panel-shipments">
+      <div class="tw">
+        <div class="th2">
+          <div class="sr">
+            <input class="si" id="sq" placeholder="코드/상품 검색..." oninput="filterTbl()" style="min-width:140px">
+            <select class="si" id="fs" onchange="filterTbl()"></select>
+            <select class="si" id="fc" onchange="filterTbl()"></select>
+          </div>
+        </div>
+        <div style="overflow-x:auto">
+          <table><thead><tr>
+            <th id="t-thCode">코드</th><th id="t-thProd">상품명</th><th id="t-thSupp">공급업체</th><th id="t-thCat">분류</th>
+            <th>EUR</th><th id="t-thKrw">KRW(환산)</th><th>ETA</th><th id="t-thStage">단계</th><th id="t-thProg">진행</th>
+          </tr></thead><tbody id="tbl"></tbody></table>
+        </div>
+      </div>
+    </div>
+
+    <!-- PROCESS -->
+    <div class="panel" id="panel-process">
+      <div style="margin-bottom:14px"><select class="si" style="max-width:400px" id="proc-sel" onchange="loadProc()"></select></div>
+      <div id="proc-view" style="display:none"><div class="pr" id="proc-hdr"></div><div class="tl" id="timeline"></div></div>
+    </div>
+
+    <!-- DOCUMENTS — 새로운 서류 관리 시스템 -->
+    <div class="panel" id="panel-documents">
+      <div class="doc-storage-banner">
+        <div class="dsb-icon">☁</div>
+        <div>
+          <div class="dsb-title">Google Drive 연동 서류 관리</div>
+          <div class="dsb-desc">서류를 Google Drive에 업로드 후 공유 링크를 등록하면 한국·이탈리아 양쪽 팀이 동시 접근 가능합니다. 파일 크기 제한 없음 · 비용 없음 · 실시간 공유</div>
+        </div>
+        <button class="bp" onclick="openDriveHelp()">연동 방법 안내</button>
+      </div>
+      <div style="display:grid;grid-template-columns:300px 1fr;gap:16px;margin-top:16px">
+        <!-- 수입 건 목록 -->
+        <div class="doc-ship-list" id="doc-ship-list"></div>
+        <!-- 서류 상세 -->
+        <div id="doc-detail-panel">
+          <div style="display:flex;align-items:center;justify-content:center;height:300px;color:var(--il);font-size:13px">
+            왼쪽에서 수입 건을 선택하세요
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- HS CODE — 10자리 반영 -->
+    <div class="panel" id="panel-hscode">
+      <div class="tw" style="padding:20px">
+        <div class="panel-toolbar" style="margin-bottom:14px">
+          <div>
+            <div style="font-size:13px;font-weight:500;color:var(--ink)" id="t-hs-title">식품 HS코드 관세율 DB (한국 10자리 기준)</div>
+            <div style="font-size:11px;color:var(--il);margin-top:2px" id="t-hs-sub">국제 6자리 + 한국 고유 4자리 = 10자리 | 관세청 UNIPASS 기준</div>
+          </div>
+          <input class="si" id="hs-search" placeholder="HS코드 또는 품목 검색..." oninput="filterHs()">
+        </div>
+        <div style="background:var(--gp);border:1px solid #f0d090;border-radius:var(--R);padding:14px;margin-bottom:14px">
+          <div style="font-size:11px;font-weight:600;color:var(--ol);margin-bottom:8px" id="t-calc-title">💰 관세 자동 계산기</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:8px;align-items:end">
+            <div class="fg"><label>과세가격 (EUR)</label><input id="calc-eur" type="number" placeholder="10000" oninput="calcDuty()"></div>
+            <div class="fg"><label>HS코드 (10자리)</label><select id="calc-hs" onchange="calcDuty()"></select></div>
+            <div class="fg"><label>과세가격 (KRW)</label><input id="calc-krw-in" readonly style="opacity:.7"></div>
+            <button class="bp" onclick="calcDuty()" style="height:32px;align-self:end">계산</button>
+          </div>
+          <div id="duty-result" style="display:none;margin-top:12px"></div>
+        </div>
+        <table class="hs-table">
+          <thead><tr>
+            <th>HS코드 (10자리)</th><th>한국 품목명</th><th>이탈리아어명</th>
+            <th>기본관세율</th><th>한-EU FTA세율</th><th>부가세</th><th>검역</th><th>비고</th>
+          </tr></thead>
+          <tbody id="hs-body"></tbody>
+        </table>
+        <div style="margin-top:10px;font-size:11px;color:var(--il);padding:8px 12px;background:var(--cr);border-radius:6px">
+          ⚠ 위 세율은 참고용입니다. 정확한 세율은 <a href="https://unipass.customs.go.kr" target="_blank" style="color:var(--info)">관세청 UNIPASS</a> 또는 관세사를 통해 확인하시기 바랍니다.
+        </div>
+      </div>
+    </div>
+
+    <!-- SALES -->
+    <div class="panel" id="panel-sales">
+      <div class="sales-kpis" id="sales-kpis"></div>
+      <div class="panel-toolbar" style="margin-bottom:14px">
+        <input class="si" id="sales-search" placeholder="주문번호/고객/상품 검색..." oninput="filterSales()">
+        <select class="si" id="sales-status-filter" onchange="filterSales()">
+          <option value="">전체 상태</option><option>견적</option><option>수주</option>
+          <option>출고</option><option>청구</option><option>완료</option><option>취소</option>
+        </select>
+        <select class="si" id="sales-month-filter" onchange="filterSales()"></select>
+        <button class="bp" onclick="openNewSale('')" id="t-btn-new-sale">+ 매출 등록</button>
+      </div>
+      <div class="tw"><div style="overflow-x:auto">
+        <table><thead><tr>
+          <th id="t-thOrdno">주문번호</th><th id="t-thOrddate">주문일</th><th id="t-thCustco">고객사</th><th id="t-thItem">상품명</th>
+          <th id="t-thQty">수량</th><th id="t-thSupply">공급가액</th><th>VAT</th><th id="t-thTotal">합계</th>
+          <th>상태</th><th>미수금</th><th>관리</th>
+        </tr></thead><tbody id="sales-tbl"></tbody></table>
+      </div></div>
+    </div>
+
+    <!-- PAYMENTS -->
+    <div class="panel" id="panel-payments">
+      <div class="sales-kpis" id="payment-kpis"></div>
+      <div class="panel-toolbar" style="margin-bottom:14px">
+        <input class="si" id="pay-search" placeholder="고객/입금번호 검색..." oninput="filterPayments()">
+        <select class="si" id="pay-status-filter" onchange="filterPayments()">
+          <option value="">전체 상태</option><option>입금완료</option><option>부분입금</option><option>미수</option><option>연체</option>
+        </select>
+        <select class="si" id="pay-month-filter" onchange="filterPayments()"></select>
+        <button class="bp" onclick="openNewPayment('')" id="t-btn-new-pay">+ 입금 등록</button>
+      </div>
+      <div class="tw"><div style="overflow-x:auto">
+        <table><thead><tr>
+          <th id="t-thPayno">입금번호</th><th id="t-thPaydate">입금일</th><th id="t-thPaycust">고객사</th><th id="t-thLinkord">연결 주문</th>
+          <th id="t-thBilled">청구금액</th><th id="t-thPaid">입금금액</th><th id="t-thBalance">잔액</th><th id="t-thMethod">입금방법</th><th>상태</th><th>관리</th>
+        </tr></thead><tbody id="pay-tbl"></tbody></table>
+      </div></div>
+    </div>
+
+    <!-- NOTIFICATIONS -->
+    <div class="panel" id="panel-notifications">
+      <!-- 클라우드 연동 설정 -->
+      <div class="tw" style="padding:18px;margin-bottom:16px;border:2px solid var(--olm)">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+          <div style="font-size:18px">☁</div>
+          <div>
+            <div style="font-size:13px;font-weight:600;color:var(--ink)">Google Sheets 실시간 연동</div>
+            <div style="font-size:11px;color:var(--il)">한국-이탈리아 양쪽에서 데이터 공유</div>
+          </div>
+          <div id="cloud-badge" style="margin-left:auto;font-size:10px;padding:3px 9px;border-radius:20px;background:var(--cr);color:var(--il)">미연동</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div class="fg">
+            <label style="font-size:11px;font-weight:500;color:var(--im)">Apps Script 웹앱 URL</label>
+            <input id="gas-url-input" type="url" placeholder="https://script.google.com/macros/s/.../exec" style="font-size:11px" oninput="updateGasUrl()">
+          </div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <button class="bp" onclick="testGasConnection()" style="font-size:11px" id="t-btn-test-gas">연결 테스트</button>
+            <button class="bo" onclick="syncNow()" style="font-size:11px" id="t-btn-sync-now">지금 동기화</button>
+            <span id="gas-test-result" style="font-size:11px;color:var(--il)"></span>
+          </div>
+          <div style="font-size:10px;color:var(--il);background:var(--cr);border-radius:6px;padding:8px 10px;line-height:1.6">
+            ① Google Sheets 생성 → ② Apps Script 배포 → ③ 웹앱 URL 붙여넣기 → ④ 연결 테스트
+          </div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+        <div>
+          <div class="tw" style="padding:18px;margin-bottom:14px">
+            <div class="fst" style="margin-top:0">수신자 설정</div>
+            <div style="display:flex;flex-direction:column;gap:9px">
+              <div class="fg"><label>한국 사무실</label><input id="kr-email" type="email" placeholder="korea@company.com" onchange="saveSettings()"></div>
+              <div class="fg"><label>이탈리아 사무실</label><input id="it-email" type="email" placeholder="italy@company.com" onchange="saveSettings()"></div>
+              <div class="fg"><label>통관/물류 담당</label><input id="cu-email" type="email" placeholder="customs@company.com" onchange="saveSettings()"></div>
+              <div class="fg"><label>추가 수신자</label><input id="ex-email" placeholder="email1, email2" onchange="saveSettings()"></div>
+            </div>
+          </div>
+          <div class="tw" style="padding:18px">
+            <div class="fst" style="margin-top:0">텔레그램 설정</div>
+            <div style="display:flex;flex-direction:column;gap:9px">
+              <div class="fg"><label>Bot Token</label><input id="tg-token" placeholder="1234567890:AAF..." onchange="saveSettings()"></div>
+              <div class="fg"><label>Chat ID</label><input id="tg-chat" placeholder="-100123456789" onchange="saveSettings()"></div>
+            </div>
+            <button class="bo" style="margin-top:10px;font-size:11px" onclick="testTg()">텔레그램 테스트</button>
+          </div>
+        </div>
+        <div class="tw" style="padding:18px">
+          <div class="fst" style="margin-top:0">단계별 알림 설정</div>
+          <div id="notif-list"></div>
+          <button class="bp" style="margin-top:14px;width:100%" onclick="saveSettings();showToast('저장되었습니다.')">저장</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- EMAIL LOG -->
+    <div class="panel" id="panel-emaillog"><div id="email-log"></div></div>
+
+  </div>
+</div>
+</div>
+
+<!-- ══ MODALS ══ -->
+<div class="ov" id="modal-quick">
+<div class="modal" style="max-width:360px">
+  <div class="mh"><div class="mt" id="t-mq-title">빠른 등록</div><button class="mc2" onclick="closeM('modal-quick')">✕</button></div>
+  <div class="mb">
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <button class="quick-btn" onclick="closeM('modal-quick');openNewModal('')"><span id="t-qb-0">📦 수입 건 등록</span></button>
+      <button class="quick-btn" onclick="closeM('modal-quick');openNewProduct('')"><span id="t-qb-1">🏷 상품 마스터 등록</span></button>
+      <button class="quick-btn" onclick="closeM('modal-quick');openNewSupplier('')"><span id="t-qb-2">🌍 해외 협력사 등록</span></button>
+      <button class="quick-btn" onclick="closeM('modal-quick');openNewCustomer('')"><span id="t-qb-3">👥 고객 등록</span></button>
+      <button class="quick-btn" onclick="closeM('modal-quick');openNewSale('')"><span id="t-qb-4">💰 매출 등록</span></button>
+      <button class="quick-btn" onclick="closeM('modal-quick');openNewPayment('')"><span id="t-qb-5">🏦 입금 등록</span></button>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- New Shipment -->
+<div class="ov" id="modal-new">
+<div class="modal">
+  <div class="mh"><div class="mt" id="t-mn-title">신규 수입 등록</div><button class="mc2" onclick="closeM('modal-new')">✕</button></div>
+  <div class="mb">
+    <div class="fst" style="margin-top:0" id="t-mn-basic">기본 정보</div>
+    <div class="fg2">
+      <div class="fg"><label>수입 코드</label><input id="n-code" readonly style="opacity:.6"></div>
+      <div class="fg"><label>상품 마스터 코드</label><select id="n-pmc" onchange="fillFromMaster()"></select></div>
+      <div class="fg"><label>상품명 *</label><input id="n-prod" placeholder="이탈리아 EVOO 500ml"></div>
+      <div class="fg"><label>공급업체</label><select id="n-supp-sel"></select></div>
+      <div class="fg"><label>수량</label><input id="n-qty" placeholder="500 BTL"></div>
+      <div class="fg"><label>금액 (EUR)</label><input id="n-amt" type="number" placeholder="10000" oninput="updateKrwPrev()"></div>
+      <div class="fg"><label>예상 입항일</label><input id="n-eta" type="date"></div>
+      <div class="fg"><label>인코텀즈</label><select id="n-inco"><option>FOB</option><option>CIF</option><option>EXW</option><option>DAP</option><option>DDP</option></select></div>
+      <div class="fg"><label>HS 코드 (10자리)</label><select id="n-hs" onchange="updateKrwPrev()"></select></div>
+      <div class="fg"><label>인증서</label><input id="n-cert" placeholder="DOP, Bio"></div>
+      <div class="fg full"><label>비고</label><textarea id="n-notes" rows="2"></textarea></div>
+    </div>
+    <div id="krw-preview" style="display:none;background:var(--gp);border:1px solid #f0d090;border-radius:var(--R);padding:12px;margin-top:10px">
+      <div class="krw-row"><span>계약금액 (EUR)</span><span id="kp-eur">—</span></div>
+      <div class="krw-row"><span>적용 환율</span><span id="kp-rate">—</span></div>
+      <div class="krw-row"><span>예상 관세율 (기본)</span><span id="kp-duty">—</span></div>
+      <div style="height:1px;background:#f0d090;margin:7px 0"></div>
+      <div class="krw-row" style="font-weight:600;font-size:14px;color:var(--ink)"><span>원화 환산 (관세 제외)</span><span id="kp-krw">—</span></div>
+    </div>
+    <div class="fst" id="t-mn-food">식품 분류</div>
+    <div class="food-grid" id="food-grid-new"></div>
+    <div style="background:var(--olp);border-radius:7px;padding:11px 13px;margin-top:14px">
+      <div style="font-size:10px;font-weight:600;color:var(--ol);margin-bottom:5px">📧 등록 알림 미리보기</div>
+      <div class="ep" id="new-ep"></div>
+    </div>
+    <div class="df">
+      <button class="bo" onclick="closeM('modal-new')">취소</button>
+      <button class="bp" onclick="submitNew()">등록 + Gmail 발송</button>
+    </div>
+    <div class="ss" id="new-ss"></div>
+  </div>
+</div>
+</div>
+
+<!-- Product Master -->
+<div class="ov" id="modal-pm">
+<div class="modal" style="max-width:700px">
+  <div class="mh"><div class="mt" id="mp-title">상품 마스터 등록</div><button class="mc2" onclick="closeM('modal-pm')">✕</button></div>
+  <div class="mb">
+    <div style="background:var(--olp);border:1px solid var(--olm);border-radius:var(--R);padding:12px;margin-bottom:16px">
+      <div style="font-size:11px;font-weight:600;color:var(--ol);margin-bottom:8px">📋 기존 마스터 참조하여 생성</div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <select class="si" id="pm-ref-sel" style="flex:1" onchange="previewRef()"><option value="">참조할 상품 선택...</option></select>
+        <button class="bp" onclick="applyRef()">참조 복사</button>
+        <button class="bo" onclick="clearRef()">초기화</button>
+      </div>
+      <div id="pm-ref-preview" style="display:none;margin-top:8px;background:var(--ww);border-radius:6px;padding:8px 12px;font-size:11px;color:var(--im)"></div>
+    </div>
+    <div class="fst" style="margin-top:0">식별 정보</div>
+    <div class="fg3">
+      <div class="fg"><label>관리 코드 *</label><input id="pm-code" placeholder="100123" maxlength="10"></div>
+      <div class="fg"><label>상품명 (한국어) *</label><input id="pm-name-ko" placeholder="5스타지오니 슈페리오레"></div>
+      <div class="fg"><label>상품명 (이탈리아어)</label><input id="pm-name-it" placeholder="5 Stagioni Superiore"></div>
+    </div>
+    <div class="fst">규격 정보</div>
+    <div class="fg3">
+      <div class="fg"><label>단위</label><input id="pm-unit" placeholder="10kg/EA"></div>
+      <div class="fg"><label>포장단위 (EA/BOX)</label><input id="pm-pack" placeholder="1EA / 1BOX"></div>
+      <div class="fg"><label>보관 방법</label>
+        <select id="pm-storage"><option value="상온">상온</option><option value="냉장">냉장 (0~10°C)</option><option value="냉동">냉동 (-18°C이하)</option><option value="건조">건조 창고</option></select>
+      </div>
+      <div class="fg"><label>HS 코드 (10자리)</label><select id="pm-hs"></select></div>
+      <div class="fg"><label>카테고리</label>
+        <select id="pm-cat"><option>올리브오일/오일류</option><option>와인/주류</option><option>치즈/유제품</option><option>파스타/곡물</option><option>밀가루/제분</option><option>소스/조미료</option><option>통조림/가공품</option><option>스낵/과자류</option><option>커피/차</option><option>유기농/프리미엄</option><option>기타</option></select>
+      </div>
+      <div class="fg"><label>인증서</label><input id="pm-cert" placeholder="DOP, Bio, IGP"></div>
+    </div>
+    <div class="fst">가격 정보</div>
+    <div class="fg3">
+      <div class="fg"><label>매입단가 (EUR/단위)</label><input id="pm-buy" type="number" placeholder="12.50"></div>
+      <div class="fg"><label>권장 판매가 (KRW)</label><input id="pm-sell" type="number" placeholder="25000"></div>
+      <div class="fg"><label>주요 공급업체</label><select id="pm-supplier-sel"></select></div>
+    </div>
+    <div class="fst">비고</div>
+    <div class="fg"><textarea id="pm-notes" rows="2" placeholder="보관 주의사항, 알레르기 정보 등..."></textarea></div>
+    <input type="hidden" id="pm-edit-code">
+    <div class="df">
+      <button class="bo" onclick="closeM('modal-pm')">취소</button>
+      <button class="bp" onclick="submitProduct()">저장</button>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- Product Detail -->
+<div class="ov" id="modal-pm-detail">
+<div class="modal" style="max-width:800px">
+  <div class="mh"><div class="mt" id="mpd-title">상품 상세</div><button class="mc2" onclick="closeM('modal-pm-detail')">✕</button></div>
+  <div class="mb" id="mpd-body"></div>
+</div>
+</div>
+
+<!-- Supplier -->
+<div class="ov" id="modal-supplier">
+<div class="modal" style="max-width:680px">
+  <div class="mh"><div class="mt" id="msup-title">해외 협력사 등록</div><button class="mc2" onclick="closeM('modal-supplier')">✕</button></div>
+  <div class="mb">
+    <div class="fst" style="margin-top:0">기본 정보</div>
+    <div class="fg2">
+      <div class="fg"><label>업체 코드 *</label><input id="sup-code" placeholder="SUP-001" maxlength="10"></div>
+      <div class="fg"><label>업체명 (현지어) *</label><input id="sup-name" placeholder="Frantoio Muraglia SRL"></div>
+      <div class="fg"><label>업체명 (한국어)</label><input id="sup-name-ko" placeholder="프란토이오 무라글리아"></div>
+      <div class="fg"><label>국가</label><input id="sup-country" value="Italy"></div>
+      <div class="fg"><label>도시/지역</label><input id="sup-city" placeholder="Andria, Puglia"></div>
+      <div class="fg"><label>업종</label><select id="sup-type">
+        <option>올리브오일 생산자</option><option>치즈/유제품 생산자</option><option>파스타/밀가루 생산자</option>
+        <option>소스/가공식품 생산자</option><option>와인 생산자</option><option>커피 생산자</option>
+        <option>종합 식품 제조사</option><option>무역상/에이전트</option><option>기타</option>
+      </select></div>
+    </div>
+    <div class="fst">연락처</div>
+    <div class="fg2">
+      <div class="fg"><label>담당자 이름</label><input id="sup-contact" placeholder="Marco Rossi"></div>
+      <div class="fg"><label>직함</label><input id="sup-title-person" placeholder="Export Manager"></div>
+      <div class="fg"><label>이메일</label><input id="sup-email" type="email" placeholder="export@supplier.it"></div>
+      <div class="fg"><label>전화번호</label><input id="sup-phone" placeholder="+39 080 123 4567"></div>
+      <div class="fg"><label>WhatsApp</label><input id="sup-whatsapp" placeholder="+39 333 123 4567"></div>
+      <div class="fg"><label>웹사이트</label><input id="sup-web" placeholder="https://www.supplier.it"></div>
+    </div>
+    <div class="fst">거래 조건</div>
+    <div class="fg2">
+      <div class="fg"><label>결제 조건</label><select id="sup-payment">
+        <option>T/T (전신환)</option><option>L/C (신용장)</option><option>D/P</option><option>D/A</option><option>Open Account</option>
+      </select></div>
+      <div class="fg"><label>거래 통화</label><select id="sup-currency"><option>EUR</option><option>USD</option><option>GBP</option></select></div>
+      <div class="fg"><label>MOQ</label><input id="sup-moq" placeholder="100 KG"></div>
+      <div class="fg"><label>리드타임 (일)</label><input id="sup-lead" type="number" placeholder="45"></div>
+      <div class="fg"><label>주요 인증</label><input id="sup-certs" placeholder="ISO22000, BIO, DOP"></div>
+      <div class="fg"><label>거래 등급</label>
+        <select id="sup-grade"><option>A (우수)</option><option>B (양호)</option><option>C (보통)</option><option>신규</option></select>
+      </div>
+    </div>
+    <div class="fst">비고</div>
+    <div class="fg"><textarea id="sup-notes" rows="2"></textarea></div>
+    <input type="hidden" id="sup-edit-code">
+    <div class="df">
+      <button class="bo" onclick="closeM('modal-supplier')">취소</button>
+      <button class="bp" onclick="submitSupplier()">저장</button>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- Customer -->
+<div class="ov" id="modal-customer">
+<div class="modal" style="max-width:680px">
+  <div class="mh"><div class="mt" id="mcust-title">고객 등록</div><button class="mc2" onclick="closeM('modal-customer')">✕</button></div>
+  <div class="mb">
+    <div class="fst" style="margin-top:0">기본 정보</div>
+    <div class="fg2">
+      <div class="fg"><label>고객 코드 *</label><input id="cust-code" placeholder="CUS-001" maxlength="10"></div>
+      <div class="fg"><label>업체명 *</label><input id="cust-name" placeholder="(주)맛있는식품"></div>
+      <div class="fg"><label>사업자번호</label><input id="cust-bizno" placeholder="123-45-67890"></div>
+      <div class="fg"><label>업종</label><select id="cust-type">
+        <option>음식점/레스토랑</option><option>호텔/리조트</option><option>식품 도매</option>
+        <option>식품 소매/마트</option><option>온라인 쇼핑몰</option><option>급식/케이터링</option>
+        <option>식품 제조업</option><option>기타</option>
+      </select></div>
+      <div class="fg"><label>고객 등급</label>
+        <select id="cust-grade"><option>VIP</option><option>A</option><option>B</option><option>C</option></select>
+      </div>
+      <div class="fg"><label>지역</label><input id="cust-region" placeholder="서울 강남구"></div>
+    </div>
+    <div class="fst">담당자 정보</div>
+    <div class="fg2">
+      <div class="fg"><label>담당자 이름</label><input id="cust-contact" placeholder="김영업"></div>
+      <div class="fg"><label>직함</label><input id="cust-contact-title" placeholder="구매 담당"></div>
+      <div class="fg"><label>이메일</label><input id="cust-email" type="email" placeholder="buyer@customer.com"></div>
+      <div class="fg"><label>전화번호</label><input id="cust-phone" placeholder="010-1234-5678"></div>
+    </div>
+    <div class="fst">거래 조건</div>
+    <div class="fg2">
+      <div class="fg"><label>결제 조건 (일)</label><input id="cust-pay-terms" type="number" placeholder="30" value="30"></div>
+      <div class="fg"><label>신용한도 (KRW)</label><input id="cust-credit" type="number" placeholder="10000000"></div>
+    </div>
+    <div class="fst">비고</div>
+    <div class="fg"><textarea id="cust-notes" rows="2"></textarea></div>
+    <input type="hidden" id="cust-edit-code">
+    <div class="df">
+      <button class="bo" onclick="closeM('modal-customer')">취소</button>
+      <button class="bp" onclick="submitCustomer()">저장</button>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- Sale Modal -->
+<div class="ov" id="modal-sale">
+<div class="modal" style="max-width:700px">
+  <div class="mh"><div class="mt" id="msale-title">매출 등록</div><button class="mc2" onclick="closeM('modal-sale')">✕</button></div>
+  <div class="mb">
+    <div class="fst" style="margin-top:0">주문 정보</div>
+    <div class="fg2">
+      <div class="fg"><label>주문번호</label><input id="sale-code" readonly style="opacity:.6"></div>
+      <div class="fg"><label>주문일 *</label><input id="sale-date" type="date"></div>
+      <div class="fg"><label>고객사 *</label><select id="sale-cust"></select></div>
+      <div class="fg"><label>상태</label>
+        <select id="sale-status"><option>견적</option><option>수주</option><option>출고</option><option>청구</option><option>완료</option><option>취소</option></select>
+      </div>
+    </div>
+    <div class="fst">상품 정보</div>
+    <div id="sale-items-wrap"></div>
+    <button class="bo" style="margin-top:8px;font-size:11px;width:100%" onclick="addSaleItem()">+ 상품 추가</button>
+    <div style="background:var(--cr);border:1px solid var(--if);border-radius:var(--R);padding:12px;margin-top:12px">
+      <div class="krw-row"><span>공급가액 소계</span><span id="sale-subtotal-sum">—</span></div>
+      <div class="krw-row"><span>부가세 (10%)</span><span id="sale-vat-sum">—</span></div>
+      <div style="height:1px;background:var(--if);margin:7px 0"></div>
+      <div class="krw-row" style="font-weight:600;font-size:14px;color:var(--ink)"><span>합계 금액</span><span id="sale-total-sum">—</span></div>
+    </div>
+    <div class="fst">결제/배송</div>
+    <div class="fg2">
+      <div class="fg"><label>납기일</label><input id="sale-due" type="date"></div>
+      <div class="fg"><label>결제 기한</label><input id="sale-pay-due" type="date"></div>
+      <div class="fg full"><label>비고</label><textarea id="sale-notes" rows="2"></textarea></div>
+    </div>
+    <div class="df">
+      <button class="bo" onclick="closeM('modal-sale')">취소</button>
+      <button class="bp" onclick="submitSale()">저장</button>
+    </div>
+    <input type="hidden" id="sale-edit-code">
+  </div>
+</div>
+</div>
+
+<!-- Payment Modal -->
+<div class="ov" id="modal-payment">
+<div class="modal" style="max-width:600px">
+  <div class="mh"><div class="mt" id="mpay-title">입금 등록</div><button class="mc2" onclick="closeM('modal-payment')">✕</button></div>
+  <div class="mb">
+    <div class="fst" style="margin-top:0">입금 정보</div>
+    <div class="fg2">
+      <div class="fg"><label>입금번호</label><input id="pay-code" readonly style="opacity:.6"></div>
+      <div class="fg"><label>입금일 *</label><input id="pay-date" type="date"></div>
+      <div class="fg"><label>고객사 *</label><select id="pay-cust" onchange="loadCustomerSales()"></select></div>
+      <div class="fg"><label>연결 주문</label><select id="pay-sale-link"><option value="">전체 미수금</option></select></div>
+      <div class="fg"><label>청구금액</label><input id="pay-billed" readonly style="opacity:.7"></div>
+      <div class="fg"><label>입금금액 *</label><input id="pay-amount" type="number" placeholder="1000000" oninput="calcPayBalance()"></div>
+      <div class="fg"><label>잔액</label><input id="pay-balance" readonly style="opacity:.7"></div>
+      <div class="fg"><label>입금방법</label>
+        <select id="pay-method"><option>계좌이체</option><option>현금</option><option>카드</option><option>어음</option><option>기타</option></select>
+      </div>
+      <div class="fg"><label>입금 계좌</label><input id="pay-account" placeholder="국민은행 123-456-789012"></div>
+      <div class="fg"><label>상태</label>
+        <select id="pay-status2"><option>입금완료</option><option>부분입금</option><option>미수</option><option>연체</option></select>
+      </div>
+    </div>
+    <div class="fst">비고</div>
+    <div class="fg"><textarea id="pay-notes" rows="2"></textarea></div>
+    <input type="hidden" id="pay-edit-code">
+    <div class="df">
+      <button class="bo" onclick="closeM('modal-payment')">취소</button>
+      <button class="bp" onclick="submitPayment()">저장</button>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- Stage Advance -->
+<div class="ov" id="modal-stage">
+<div class="modal">
+  <div class="mh"><div class="mt" id="ms-title">단계 진행</div><button class="mc2" onclick="closeM('modal-stage')">✕</button></div>
+  <div class="mb">
+    <div id="stage-body"></div>
+    <div class="df">
+      <button class="bo" onclick="closeM('modal-stage')">취소</button>
+      <button class="bp" onclick="confirmAdv()">진행 + Gmail 발송</button>
+    </div>
+    <div class="ss" id="stage-ss"></div>
+  </div>
+</div>
+</div>
+
+<!-- Document Link Modal -->
+<div class="ov" id="modal-doc-link">
+<div class="modal" style="max-width:580px">
+  <div class="mh"><div class="mt" id="mdl-title">서류 등록</div><button class="mc2" onclick="closeM('modal-doc-link')">✕</button></div>
+  <div class="mb">
+    <div class="fst" style="margin-top:0">서류 정보</div>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div class="fg"><label>서류명</label><input id="dl-name" placeholder="선하증권 (B/L)"></div>
+      <div class="fg"><label>서류 유형</label>
+        <select id="dl-type">
+          <option>계약서/PI</option><option>선하증권 B/L</option><option>상업송장 CI</option>
+          <option>패킹리스트</option><option>원산지증명서 CO</option><option>식품위생증명서</option>
+          <option>수입신고서</option><option>식품검역증</option><option>성분분석표 CoA</option>
+          <option>라벨링 확인서</option><option>기타</option>
+        </select>
+      </div>
+      <!-- Google Drive 링크 방식 -->
+      <div style="background:var(--infop);border:1px solid #b5d4f4;border-radius:var(--R);padding:14px">
+        <div style="font-size:12px;font-weight:600;color:var(--info);margin-bottom:8px">☁ Google Drive 링크 (권장)</div>
+        <div class="fg" style="margin-bottom:8px"><label>Google Drive 공유 링크</label><input id="dl-gdrive" placeholder="https://drive.google.com/file/d/..."></div>
+        <div style="font-size:11px;color:var(--il)">Drive에서 파일 선택 → 공유 → 링크 복사 → 붙여넣기</div>
+      </div>
+      <!-- 로컬 파일 첨부 방식 -->
+      <div style="background:var(--cr);border:1px solid var(--if);border-radius:var(--R);padding:14px">
+        <div style="font-size:12px;font-weight:600;color:var(--im);margin-bottom:8px">📁 로컬 파일 첨부 (소용량 권장)</div>
+        <div class="fg" style="margin-bottom:6px">
+          <input type="file" id="dl-file" accept=".pdf,.jpg,.jpeg,.png,.xlsx,.docx" style="font-size:12px">
+        </div>
+        <div style="font-size:11px;color:var(--il)">PDF, JPG, PNG, Excel, Word · 최대 10MB · 브라우저 세션 내 유지</div>
+      </div>
+      <div class="fg"><label>비고</label><textarea id="dl-notes" rows="2" placeholder="문서 번호, 발급기관, 유효기간 등..."></textarea></div>
+      <div class="fg"><label>발급일</label><input id="dl-issued" type="date"></div>
+      <div class="fg"><label>만료일 (해당시)</label><input id="dl-expires" type="date"></div>
+    </div>
+    <input type="hidden" id="dl-ship-id">
+    <input type="hidden" id="dl-stage-idx">
+    <input type="hidden" id="dl-doc-idx">
+    <input type="hidden" id="dl-edit-idx">
+    <div class="df">
+      <button class="bo" onclick="closeM('modal-doc-link')">취소</button>
+      <button class="bp" onclick="submitDocLink()">저장</button>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- Google Drive Help Modal -->
+<div class="ov" id="modal-drive-help">
+<div class="modal" style="max-width:620px">
+  <div class="mh"><div class="mt">Google Drive 연동 안내</div><button class="mc2" onclick="closeM('modal-drive-help')">✕</button></div>
+  <div class="mb">
+    <div style="display:flex;flex-direction:column;gap:16px">
+      <div style="background:var(--infop);border-radius:var(--R);padding:14px">
+        <div style="font-size:13px;font-weight:600;color:var(--info);margin-bottom:6px">✅ 왜 Google Drive가 최적인가?</div>
+        <div style="font-size:12px;color:var(--im);display:flex;flex-direction:column;gap:4px">
+          <div>• <strong>비용 없음</strong> — Google Drive 15GB 무료 (업무용 서류 수백 건 저장 가능)</div>
+          <div>• <strong>팀 공유</strong> — 한국·이탈리아 사무실이 같은 파일에 동시 접근</div>
+          <div>• <strong>크기 제한 없음</strong> — 고화질 스캔본, 대용량 계약서 모두 OK</div>
+          <div>• <strong>버전 관리</strong> — 파일 수정 이력 자동 보관</div>
+          <div>• <strong>모바일 접근</strong> — 현장에서 스마트폰으로 바로 확인</div>
+        </div>
+      </div>
+      <div>
+        <div style="font-size:12px;font-weight:600;color:var(--ink);margin-bottom:10px">📌 사용 방법 (3단계)</div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div style="display:flex;gap:12px;align-items:flex-start">
+            <div style="width:28px;height:28px;border-radius:50%;background:var(--ol);color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;flex-shrink:0">1</div>
+            <div>
+              <div style="font-size:12px;font-weight:600">Google Drive에 폴더 구성</div>
+              <div style="font-size:11px;color:var(--il);margin-top:2px">예: 직수입서류 → IMP-2024-001 → 계약서, B/L, 검역증...</div>
+            </div>
+          </div>
+          <div style="display:flex;gap:12px;align-items:flex-start">
+            <div style="width:28px;height:28px;border-radius:50%;background:var(--ol);color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;flex-shrink:0">2</div>
+            <div>
+              <div style="font-size:12px;font-weight:600">파일 공유 링크 복사</div>
+              <div style="font-size:11px;color:var(--il);margin-top:2px">파일 우클릭 → 공유 → 링크 있는 모든 사용자 → 링크 복사</div>
+            </div>
+          </div>
+          <div style="display:flex;gap:12px;align-items:flex-start">
+            <div style="width:28px;height:28px;border-radius:50%;background:var(--ol);color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;flex-shrink:0">3</div>
+            <div>
+              <div style="font-size:12px;font-weight:600">이 시스템에 링크 등록</div>
+              <div style="font-size:11px;color:var(--il);margin-top:2px">서류 관리 → 해당 수입건 → 서류 추가 → Drive 링크 붙여넣기</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div style="background:var(--gp);border-radius:var(--R);padding:12px;font-size:12px;color:var(--im)">
+        <strong>📁 권장 폴더 구조:</strong><br>
+        <code style="font-size:11px">직수입서류/<br>
+        &nbsp;&nbsp;IMP-2024-001_EVOO/<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;01_계약서_PI.pdf<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;02_선하증권_BL.pdf<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;03_상업송장_CI.pdf<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;04_원산지증명서_CO.pdf<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;05_식품검역증.pdf</code>
+      </div>
+      <div style="text-align:center">
+        <a href="https://drive.google.com" target="_blank" class="bp" style="text-decoration:none;display:inline-block">Google Drive 열기 →</a>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<div class="toast" id="toast"></div>
+<div class="save-ind" id="save-ind">💾 저장됨</div>
+<script src="app.js"></script>
+</body>
+</html>
